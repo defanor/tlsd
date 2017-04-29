@@ -1,0 +1,8 @@
+[Unit]
+Description=TLSd P2P IM reconnect timer
+
+[Timer]
+OnUnitInactiveSec=600
+
+[Install]
+WantedBy=timers.target

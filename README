@@ -1,0 +1,48 @@
+tlsd - a TLS daemon
+===================
+TLSd is a daemon that both accepts and initiates TLS connections, runs
+processes, and provides peer certificate's fingerprint as an
+environment variable for them. The intent is to facilitate creation
+and usage of simple services for peer-to-peer networking.
+
+
+Examples
+--------
+An echo server on a random port:
+
+    $ tlsd -e cat
+
+Authentication:
+
+    $ tlsd -p 5556 -- sh -c 'echo "Hello, ${SHA256}! I am a ${SIDE}."'
+
+Connection initiation:
+
+    $ echo 'localhost 5600' | tlsd -e echo 'hello'
+
+Per-connection FIFO pairs:
+
+    $ tlsd -p 5601 -e -- std2fifo -e ~/.chat/
+
+
+Installation
+------------
+Dependencies: GnuTLS. To install from a tarball distribution:
+
+    $ ./configure && make && make install
+
+It uses GNU Build System, so the standard options and targets are
+present.
+
+Generated files are not included into the DVCS repository. To generate
+them, use:
+
+    $ aclocal && autoconf && autoheader && automake --add-missing
+
+X.509 certificates can be generated with GnuTLS's certtool or
+OpenSSL's req command.
+
+
+Documentation
+-------------
+An info manual and man pages are provided.

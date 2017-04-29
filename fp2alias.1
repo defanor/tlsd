@@ -1,0 +1,48 @@
+.TH fp2alias 1
+
+.SH NAME
+fp2alias - a basic fingerprint-to-alias converter
+
+.SH SYNOPSIS
+fp2alias [\fIoption ...\fR] [--] [<\fIcommand\fR> [\fIargument ...\fR]]
+
+.SH DESCRIPTION
+fp2alias is a helper program for TLSd. It reads the \fBSHA256\fR
+environment variable, adds the \fBALIAS\fR variable by looking it up
+in a file, and runs a given command with that variable in the
+environment.
+
+If it's not allowed to add new aliases, it would reject unknown users.
+
+.SH OPTIONS
+.IP "\fB\-f\fR \fIfile\fR"
+A file with "\fIfingerprint\fR \fIalias\fR" entries (default is
+\fB/etc/tls/aliases\fR).
+.IP \fB\-a\fR
+Add new aliases.
+.IP "\fB\-i\fR \fIident\fR"
+Syslog identifier to use.
+.IP \fB\-e\fR
+Print messages into stderr, in addition to syslog.
+.IP \fB\-h\fR
+Print a help message and exit.
+
+.SH EXAMPLES
+.SS Echo server
+.nf
+tlsd -- fp2alias -- cat
+.fi
+
+.SS Authentication
+.nf
+tlsd -- fp2alias -- sh -c 'echo "Hello, ${ALIAS}!"'
+.fi
+
+.SH COPYING
+This is free and unencumbered software released into the public
+domain.
+
+.SH SEE ALSO
+\fBtlsd\fR(1)
+
+See \fBinfo tlsd\fR for more documentation.

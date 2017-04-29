@@ -1,0 +1,12 @@
+[Unit]
+Description=TLSd P2P IM
+Requires=nc-chatroom.service
+After=syslog.target
+
+[Service]
+Environment="PATH=/usr/local/bin/:/usr/bin/"
+ExecStart=/usr/local/bin/tlsd-im.sh
+User=tlsd-im
+
+[Install]
+WantedBy=multi-user.target

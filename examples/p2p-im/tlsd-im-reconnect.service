@@ -1,0 +1,13 @@
+[Unit]
+Description=TLSd P2P IM reconnect
+Requisite=tlsd-im.service
+After=syslog.target
+
+[Service]
+Type=oneshot
+Environment="PATH=/usr/local/bin/:/usr/bin/"
+ExecStart=/usr/local/bin/tlsd-im-reconnect.sh
+User=tlsd-im
+
+[Install]
+WantedBy=multi-user.target

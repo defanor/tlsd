@@ -1,0 +1,49 @@
+.TH std2fifo 1
+
+.SH NAME
+std2fifo - a std{in,out} <-> <dir>/<env var>/{in,out} proxy
+
+.SH SYNOPSIS
+std2fifo [\fIoption ...\fR] [--] <\fIdir\fR>
+
+.SH DESCRIPTION
+std2fifo is a helper program for TLSd. Given a root directory and an
+environment variable, it creates a "<\fIroot dir\fR>/<\fIenv var\fR>/"
+directory, writes input into the "out" FIFO in that directory, and
+prints the "in" FIFO output.
+
+Overall, it tries to be suitable for use with TLSd (or other
+super-servers), and with common tools on the other end.
+
+.SH OPTIONS
+.IP "\fB\-v\fR \fIvar\fR"
+An environment variable name (default is \fBSHA256\fR).
+.IP \fB\-c\fR
+Continuous streams mode: do not reopen streams once they are closed,
+and do not close the "out" stream after each message. It is intended
+for applications such as file transfer, as opposed to textual
+messaging.
+.IP "\fB\-i\fR \fIident\fR"
+Syslog identifier to use.
+.IP \fB\-e\fR
+Print messages into stderr, in addition to syslog.
+.IP \fB\-h\fR
+Print a help message and exit.
+
+.SH EXAMPLES
+.nf
+FOO=bar std2fifo -v FOO -rbe /tmp/
+.fi
+
+.nf
+tlsd -p 5601 -e -- std2fifo -rbe ~/.chat/
+.fi
+
+.SH COPYING
+This is free and unencumbered software released into the public
+domain.
+
+.SH SEE ALSO
+\fBtlsd\fR(1)
+
+See \fBinfo tlsd\fR for more documentation.

@@ -1,0 +1,10 @@
+[Unit]
+Description=Ncat chatroom
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/nc -vl --broker 127.0.0.1 7000
+User=nobody
+
+[Install]
+WantedBy=multi-user.target

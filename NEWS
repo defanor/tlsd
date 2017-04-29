@@ -1,0 +1,12 @@
+                                                         -*- outline -*-
+This is the history of noteworthy changes in TLSd.
+
+
+* Version 0.0.1 (2017-04-29)
+  Versioning is started.
+
+* 2017-04-21
+  A P2P IM example is added.
+
+* 2017-04-12
+  This NEWS file is created.

@@ -1,0 +1,13 @@
+[Unit]
+Description=TLSd chatroom
+Requires=nc-chatroom.service
+After=syslog.target
+
+[Service]
+Type=simple
+Environment="PATH=/usr/local/bin/:/usr/bin/"
+ExecStart=/usr/local/bin/tlsd -p 5600 -- fp2alias -a -- tlsd-chat.sh
+User=tlsd
+
+[Install]
+WantedBy=multi-user.target

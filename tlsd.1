@@ -1,0 +1,67 @@
+.TH tlsd 1
+
+.SH NAME
+tlsd - a TLS daemon
+
+.SH SYNOPSIS
+tlsd [\fIoption ...\fR] [--] <\fIcommand\fR> [\fIargument ...\fR]
+
+.SH DESCRIPTION
+TLSd is a daemon that both accepts and initiates TLS connections, runs
+processes, and provides peer certificate's fingerprint as an
+environment variable for them. The intent is to facilitate creation
+and usage of simple services for peer-to-peer networking.
+
+.SH OPTIONS
+.IP "\fB\-k\fR \fIkeyfile\fR"
+Private key file to use (default is \fB/etc/tls/key.pem\fR).
+.IP "\fB\-c\fR \fIcertfile\fR"
+Certificate file to use (default is \fB/etc/tls/cert.pem\fR).
+.IP "\fB\-p\fR \fIport\fR"
+Port to listen on (default is to use a randomly selected one).
+.IP "\fB\-b\fR \fIhost\fR"
+Bind address (default is 0.0.0.0).
+.IP "\fB\-s\fR \fIsigno\fR"
+Send a signal to a child on termination. See \fBsignal\fR(7) for
+signal numbers.
+.IP \fB\-n\fR
+Do not require a peer certificate. This makes the \fBSHA256\fR
+environment variable for child processes optional.
+.IP "\fB-d\fR \fIdirectory\fR"
+Write peer certificates in DER format into a directory.
+.IP "\fB\-i\fR \fIident\fR"
+Syslog identifier to use.
+.IP \fB\-e\fR
+Print messages into stderr, in addition to syslog.
+.IP \fB\-h\fR
+Print a help message and exit.
+
+.SH EXAMPLES
+.SS Echo server
+.nf
+tlsd -e cat
+.fi
+.SS Authentication
+.nf
+tlsd -p 5556 -- sh -c 'echo "Hello, ${SHA256}! I am a ${SIDE}."'
+.fi
+.SS Connection initiation
+.nf
+echo 'localhost 5600' | tlsd -e echo 'hello'
+.fi
+
+.SH SIGNALS
+.IP "SIGINT, SIGTERM"
+Terminate gracefully.
+
+.IP SIGHUP
+Reload key and certificate.
+
+.SH COPYING
+This is free and unencumbered software released into the public
+domain.
+
+.SH SEE ALSO
+\fBfp2alias\fR(1), \fBstd2fifo\fR(1)
+
+See \fBinfo tlsd\fR for more documentation.

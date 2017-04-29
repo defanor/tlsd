@@ -1,0 +1,577 @@
+\input texinfo
+@setfilename tlsd.info
+@settitle TLSd
+
+@direntry
+* TLSd: (tlsd). TLS super-server.
+@end direntry
+
+@copying
+@quotation
+@verbatiminclude COPYING
+@end quotation
+@end copying
+
+@include version.texi
+
+@node Top
+@top TLSd
+TLSd is a daemon that both accepts and initiates TLS connections, runs
+processes, and provides peer certificate's fingerprint as an
+environment variable for them. The intent is to facilitate creation
+and usage of simple services for peer-to-peer networking.
+
+This manual is for TLSd version @value{VERSION}, last updated on
+@value{UPDATED}.
+
+@menu
+* Copying Conditions:: Your rights.
+* Invocation::         Command line arguments.
+* Usage::              Basic usage instructions.
+* fp2alias::           A basic fingerprint-to-alias converter.
+* std2fifo::           A std@{in,out@} <-> <dir>/<env var>/@{in,out@} proxy.
+* Common tools::       Using common tools in combination with TLSd.
+* Writing services::   Tips and guidelines on how to write services.
+@end menu
+
+
+@node Copying Conditions
+@chapter TLSd Copying Conditions
+@insertcopying
+
+
+@node Invocation
+@chapter TLSd invocation
+
+@example
+tlsd [option ...] [--] <command> [argument ...]
+@end example
+
+@section Command line arguments
+@table @option
+@item -k @var{keyfile}
+Private key file to use (default is @file{/etc/tls/key.pem}).
+
+@item -c @var{certfile}
+Certificate file to use (default is @file{/etc/tls/cert.pem}).
+
+@item -p @var{port}
+Port to listen on (default is to use a randomly selected one).
+
+@item -b @var{host}
+Bind address (default is 0.0.0.0).
+
+@item -s @var{signo}
+Send a signal to a child on termination. No signal is sent by default:
+child processes are expected to exit once their @code{stdin} is closed.
+
+@item -n
+Do not require a peer certificate. This makes the @env{SHA256}
+environment variable for child processes optional.
+
+@item -d @var{directory}
+Write peer certificates in DER format into a directory.
+
+@item -i @var{ident}
+Syslog identifier to use.
+
+@item -e
+Print messages into stderr, in addition to syslog.
+
+@item -h
+Print a help message and exit.
+@end table
+
+@section Examples
+@subsection Echo server
+@example
+tlsd -e cat
+@end example
+
+@subsection Authentication
+@example
+tlsd -p 5556 -- sh -c 'echo "Hello, $@{SHA256@}! I am a $@{SIDE@}."'
+@end example
+
+@subsection Connection initiation
+@example
+echo 'localhost 5600' | tlsd -e echo 'hello'
+@end example
+
+@section Signals
+The following signals are handled:
+
+@table @asis
+@item @code{SIGINT}, @code{SIGTERM}
+Terminate gracefully.
+@item @code{SIGHUP}
+Reload key and certificate.
+@end table
+
+@node Usage
+@chapter TLSd usage
+
+@section Initiating connections
+TLSd reads space-separated hosts and services (ports) from its
+@code{stdin}, and initiates connections with those.
+
+@section Child processes
+When TLSd runs child processes, it sets the following environment
+variables:
+
+@table @env
+@item SHA256
+Peer's fingerprint: SHA256 hash of their certificate.
+
+@item SIDE
+Either @samp{CLIENT} or @samp{SERVER}, indicates what side of the
+connection we are on.
+@end table
+
+A child process can read peer's messages from @code{stdin}, and send
+messages to a peer by writing them into @code{stdout}.
+
+
+@node fp2alias
+@chapter fp2alias
+
+fp2alias is a helper program for TLSd. It reads the @env{SHA256}
+environment variable, adds the @env{ALIAS} variable by looking it up in
+a file, and runs a given command with that variable in the environment.
+
+If it's not allowed to add new aliases, it would reject unknown users.
+
+@section Invocation
+@example
+fp2alias [option ...] [--] [<command> [argument ...]]
+@end example
+
+@subsection Command line arguments
+@table @option
+@item -f @var{certfile}
+A file with "@emph{fingerprint} @emph{alias}" entries (default is
+@file{/etc/tls/aliases}).
+
+@item -a
+Add new aliases. This basically turns a private service into a public
+one.
+
+@item -i @var{ident}
+Syslog identifier to use.
+
+@item -e
+Print messages into stderr, in addition to syslog.
+
+@item -h
+Print a help message and exit.
+@end table
+
+
+@subsection Examples
+@subsubsection Authentication
+@example
+tlsd -- fp2alias -- sh -c 'echo "Hello, $@{ALIAS@}!"'
+@end example
+
+
+@node std2fifo
+@chapter std2fifo
+
+std2fifo is a helper program for TLSd. Given a root directory and an
+environment variable, it creates a "<root dir>/<env var>/" directory,
+writes input into the "out" FIFO in that directory, and prints the "in"
+FIFO output.
+
+Overall, it tries to be suitable for use with TLSd (or other
+super-servers), and with common tools on the other end.
+
+@section Invocation
+@example
+std2fifo [option ...] [--] <dir>
+@end example
+
+@subsection Command line arguments
+@table @option
+@item -v @var{var}
+An environment variable name (default is @env{SHA256}).
+
+@item -c
+Continuous streams mode: do not reopen streams once they are closed, and
+do not close the "out" stream after each message. It is intended for
+applications such as file transfer, as opposed to textual messaging.
+
+@item -i @var{ident}
+Syslog identifier to use.
+
+@item -e
+Print messages into stderr, in addition to syslog.
+
+@item -h
+Print a help message and exit.
+@end table
+
+@subsection Examples
+@subsubsection Testing
+@example
+FOO=bar std2fifo -v FOO -ce /tmp/
+@end example
+
+@subsubsection Per-connection FIFO pairs
+@example
+tlsd -p 5601 -e -- std2fifo -e /var/lib/tlsd-im/
+@end example
+
+
+@node Common tools
+@chapter Common tools
+Some of the tools that are handy to use with TLSd are mentioned
+here. See their documentation for more information.
+
+@section Certificate generation
+To generate X.509 certificates that are needed for mutual
+authentication, one can use GnuTLS:
+
+@example
+certtool --generate-privkey --outfile key.pem
+certtool --generate-self-signed --load-privkey key.pem --outfile cert.pem
+@end example
+
+Or OpenSSL:
+
+@example
+openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365
+@end example
+
+Add @option{-nodes} to the above command in order to generate an
+unencrypted key, for use with @command{tlsd}.
+
+@section Client connection
+To connect to a TLS server, one can also use GnuTLS:
+
+@example
+gnutls-cli --insecure --x509keyfile=key.pem --x509certfile=cert.pem \
+--port=5556 localhost
+@end example
+
+Or OpenSSL:
+
+@example
+openssl s_client -key key.pem -cert cert.pem -connect localhost:5556
+@end example
+
+Or ncat:
+
+@example
+nc --ssl --ssl-key key.pem --ssl-cert cert.pem localhost 5556
+@end example
+
+It may be handy to set aliases to those commands in your shell.
+
+@subsection rlwrap
+@command{rlwrap} (readline wrapper) improves text input, and makes the
+above clients usable for chat-like applications.
+
+@section Tor
+Tor hidden services are useful not just for privacy, but also to bypass
+NATs, and to have the same address anywhere you go. To setup a hidden
+service, simply add into @file{/etc/tor/torrc} something like the
+following:
+
+@example
+HiddenServiceDir /var/lib/tor/my-service/
+HiddenServicePort 5556 127.0.0.1:5556
+@end example
+
+Reload Tor, and @file{/var/lib/tor/my-service/hostname} should contain
+your new hostname.
+
+The clients should be able to connect simply by prefixing their commands
+with @command{torify}, and using that hostname.
+
+When running @command{torify tlsd}, @command{torify} may not like
+binding it to 0.0.0.0, but it can be allowed in
+@file{/etc/tor/torsocks.conf}. Or just bind to 127.0.0.1, if you don't
+want direct incoming connections anyway.
+
+If you wish to remain anonymous, extra care should be taken. This manual
+doesn't cover the topic of anonymity.
+
+@section SSH
+SSH port forwarding is handy for NAT traversal as well, if you have a
+remote server: just @command{ssh -R 5600:0.0.0.0:5600 example.com} to
+forward incoming connections to your machine.
+
+
+@node Writing services
+@chapter Writing services
+A service program is expected to write output into its @code{stdout},
+read input from @code{stdin}, and exit when its @code{stdin} is closed
+(or upon receiving a signal, which should be specified for
+@command{tlsd} in that case).
+
+While TLSd itself doesn't demand much, a service easily usable with
+standard tools requires some care to design. It is suggested to make the
+services usable without special client software, with basic shell
+commands only. Essentially, to follow the Unix philosophy, and e.g. not
+to make up a context-free grammar (one that can't be parsed with regular
+expressions properly) where a regular grammar or no parsing at all would
+suffice.
+
+Making the services reusable with other similar super-servers (such as
+@command{inetd}, @command{nc -le}, or systemd socket activation) and/or
+as interactive programs for local use could also be a good idea.
+
+@menu
+* Security::            Security tips.
+* Sample chat::         Designing and setting up a chat.
+* Sample file server::  Designing a file server.
+* Sample P2P IM::       Setting up instant messaging.
+@end menu
+@node Security
+@section Security
+TLSd tries to be simple and minimalistic; it doesn't do much to improve
+security, but leaves that to a user. A few tips to consider:
+
+@itemize @bullet
+@item
+Set users, groups, and file permissions properly.
+@item
+Use sandboxing, e.g. SELinux's @command{sandbox}: @command{tlsd --
+sandbox -M my-service}.
+@item
+Isolate worker processes from master process. For instance, only run a
+small client via @command{tlsd}, which would connect to a daemon that
+provides actual service, and runs as a separate user (which possibly has
+privileges to do what @command{tlsd} can't, but can't read your private
+keys).
+@item
+Limit resource usage (with cgroups, @command{ulimit}, etc).
+@item
+Use virtualization or dedicated machines.
+@item
+Use safe languages. For the sake of portability and ease of building,
+TLSd itself is written in C, but it's quite a risk.
+@end itemize
+
+
+@node Sample chat
+@section Sample chat
+Let's make a multi-user chat. Ncat can broker connections, so we can set
+it as a local daemon, and run more @command{nc} instances as
+@command{tlsd} services, using @command{fp2alias} to obtain aliases, and
+a basic shell script to prepend those aliases to messages.
+
+Well, here goes the chat service:
+
+@example
+@verbatiminclude examples/chat/tlsd-chat.sh
+@end example
+
+To try it:
+@example
+nc -vl --broker 127.0.0.1 7000
+tlsd -p 5600 -- fp2alias -a -- examples/chat/tlsd-chat.sh
+rlwrap nc --ssl --ssl-key key.pem --ssl-cert cert.pem localhost 5600
+@end example
+
+It is usually handy to set daemons to be run by your init system; for
+systemd, there are example service files in the @file{examples/chat/}
+directory.
+
+@subsection Client scripting
+A client can connect with either @command{rlwrap} and some TLS client,
+or a custom program. Or an option between those -- a custom shell
+script. For instance, to add a bell when one's name is mentioned, they
+can use a script that looks like this:
+
+@example
+@verbatiminclude examples/chat/tls-chat.sh
+@end example
+
+
+@node Sample file server
+@section Sample file server
+Let's make a file server now. One can actually use @command{nginx} and
+@command{curl} (and minor HTTP abuse) instead, possibly in combination
+with @command{scp} or @command{rsync}, but let's do it anyway -- because
+we can, and quite easily.
+
+@subsection Preparation
+Assuming that the certificates are already set, let's create a directory
+for files, and make it accessible to both tlsd and our regular user:
+
+@example
+$ sudo mkdir -p /srv/tlsd/files/
+$ sudo chown -R tlsd:tlsd /srv/tlsd/
+$ sudo chmod -R g+w,o-r /srv/tlsd/
+$ sudo gpasswd -a $USER tlsd
+@end example
+
+@subsection File serving
+To download files with common tools, a bare minimum is a Gopher-like
+protocol where users send file selectors, server sends files, and drops
+the connection. Something like this should do:
+
+@example
+@verbatiminclude examples/file-server/serve-files.sh
+@end example
+
+Let's try it:
+
+@example
+$ echo foo > /srv/tlsd/files/bar
+$ tlsd -ep 5601 -- serve-files.sh &> tlsd-output &
+$ echo bar | openssl s_client -key ~/.tls/key.pem -cert ~/.tls/cert.pem \
+  -quiet -connect localhost:5601
+@end example
+
+@subsection File browsing
+The serving works fine, but we don't have a way to browse files yet. For
+that, we can use @command{ls}, and perhaps not drop connections: make a
+browser for textual files and directory listings. Otherwise protocol can
+be the same, no need to complicate things:
+
+@example
+@verbatiminclude examples/file-server/browse-files.sh
+@end example
+
+@subsection File upload
+Finally, there should be file upload -- but with some authorization. We
+can make users to upload files into per-user directories, and the
+presence of a directory itself would mean authorization; to identify
+users easier (i.e., not by a SHA256 hash), @command{fp2alias} should be
+handy. As of the protocol, it may be similar to the other two: a client
+sends a selector followed by a file, and then drops a connection. Here
+it goes:
+
+@example
+@verbatiminclude examples/file-server/accept-files.sh
+@end example
+
+Let's see how that works:
+
+@example
+$ tlsd -ep 5603 -- fp2alias -- accept-files.sh &> tlsd-output &
+[1] 14063
+$ cat <(echo 'my-file') - | openssl s_client -key ~/.tls/key.pem \
+  -cert ~/.tls/cert.pem -connect localhost:5603
+# openssl output skipped
+hello
+# pressing C-d
+DONE
+$ fg 1
+tlsd -ep 5603 -- fp2alias -- accept-files.sh &>tlsd-output
+^C
+$ tail /srv/tlsd/files/$USER/my-file
+hello
+@end example
+
+
+@node Sample P2P IM
+@section Sample peer-to-peer instant messaging
+Let's make an IM now.
+
+@subsection Daemon
+We can use @command{tlsd} in combination with @command{std2fifo} to get
+a nice @command{ii}-like filesystem layout, to begin with. The daemon
+itself could look like this:
+
+@example
+tlsd -p 18765 -- std2fifo /var/lib/tlsd-im/
+@end example
+
+But we also need to restrict connections, allowing just one per
+certificate:
+
+@example
+tlsd -p 18765 -- sh -c 'flock -n "/var/lib/tlsd-im/$@{SHA256@}/lock" \
+  std2fifo /var/lib/tlsd-im/'
+@end example
+
+But since we'll be running it in background, some kind of a control
+channel should be used. And Tor would be useful to bypass NATs, and some
+minor checks would be needed to set file permissions, so the final
+couple of scripts, @file{tlsd-im-cmd.sh} and @file{tlsd-im.sh}:
+
+@example
+@verbatiminclude examples/p2p-im/tlsd-im-cmd.sh
+@end example
+
+@example
+@verbatiminclude examples/p2p-im/tlsd-im.sh
+@end example
+
+@subsection Connecting
+Now we can connect to another @command{tlsd} instance (or any other TLS
+server) with a command like this:
+
+@example
+echo 'example.com 18765' > /var/lib/tlsd-im/connect
+@end example
+
+But we want automatic connection restoration on disconnect. So let's put
+peer addresses into ``address'' files inside of their directories. Then
+we can write a basic script, and set a cron job or a systemd timer for
+it:
+
+@example
+@verbatiminclude examples/p2p-im/tlsd-im-reconnect.sh
+@end example
+
+It is not reliable (consider simulatneous connection initiation from
+both ends: both could fail, but only one should) and can be improved,
+but that's just a few lines of a shell script.
+
+@subsection UI
+The layout we've got:
+
+@example
+/var/lib/tlsd-im/
+|-- <sha256 hash>/
+|   |-- in
+|   |-- out
+|   |-- address
+|   `-- lock
+|-- <sha256 hash>/
+|   |-- in
+|   |-- out
+|   |-- address
+|   `-- lock
+`-- connect
+@end example
+
+To make it nicer, we can set aliases with @command{ln}, but it's not
+that great without specialized UI, and different users like different
+UIs. Fortunately, there is libpurple that powers different IM clients
+(pidgin and bitlbee among them), so we can write a plugin for it.
+
+An example plugin can be found in the @file{examples/p2p-im/} directory,
+along with a @file{Makefile} and the above shell scripts. Once the
+@file{/var/lib/tlsd-im/} directory is specified as the username, the
+plugin simply interacts with those FIFOs, and keeps track of newly
+created directories using @code{inotify}. IM clients such as pidgin and
+bitlbee allow to set local aliases, so we can leave it up to them.
+
+@subsection Setup
+
+What's left is to set it up: run @command{tlsd-im.sh} in background, run
+@command{tlsd-im-reconnect.sh} automatically from time to
+time. Unfortunately, the right ways to run user daemons seem to vary
+among GNU/Linux distributions even more than init systems do. Besides,
+@command{bitlbee} normally runs under a separate user, while clients
+such as Pidgin run under our regular user.
+
+One way to solve this is to just set it system-wide, adding all the
+users that should be able to access it (such as bitlbee and/or our
+regular user) into a dedicated group:
+
+@example
+@verbatiminclude examples/p2p-im/approximate-setup.sh
+@end example
+
+Then one should be able to use it with bitlbee, Pidgin, or other
+libpurple-based IM clients. Online status and message delivery tracking
+are not great, and generally it can be much better even with plain TLS,
+but a usable P2P IM is ready.
+
+@bye
