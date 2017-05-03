@@ -1,5 +1,5 @@
 #!/bin/sh
-# Accept files from remote users.
+# Accepts files from remote users.
 
 ROOT="/srv/tlsd/files"
 USERDIR="${ROOT}/${ALIAS}"

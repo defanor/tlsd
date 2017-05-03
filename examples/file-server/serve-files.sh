@@ -1,5 +1,5 @@
 #!/bin/sh
-# Serve a single file and exits.
+# Serves a single file and exits.
 
 ROOT="/srv/tlsd/files"
 
