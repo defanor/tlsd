@@ -798,7 +798,7 @@ int main (int argc,
     /* TODO: consider using chdir or open/openat instead */
     opt.peer_cert_path = malloc(opt.peer_cert_dir_len +
                                 MAX_FINGERPRINT_NIBBLES + 1);
-    if (! opt.peer_cert_path) {
+    if (opt.peer_cert_path == NULL) {
       syslog(LOG_ERR, "Failed to allocate memory");
       closelog();
       return 1;
@@ -810,7 +810,7 @@ int main (int argc,
   ret = serve(opt);
 
   /* Cleanup and exit */
-  if (opt.peer_cert_path)
+  if (opt.peer_cert_path != NULL)
     free(opt.peer_cert_path);
   closelog();
   return ret;
