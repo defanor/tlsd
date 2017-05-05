@@ -18,9 +18,10 @@ TESTS = tests/authenticate.sh
 
 TESTS_ENVIRONMENT = \
 	builddir="$(builddir)" \
-	certdir="$(top_srcdir)/tests/"
+	testdir="$(top_srcdir)/tests/"
 
 EXTRA_DIST = $(TESTS) \
+	tests/wait-for-initialization.sed \
 	tests/test-key-1.pem \
 	tests/test-cert-1.pem \
 	tests/test-key-2.pem \
