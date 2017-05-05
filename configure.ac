@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT(TLSd, 0.0.6, defanor@uberspace.net, tlsd,
+AC_INIT(TLSd, 0.0.7, defanor@uberspace.net, tlsd,
         https://defanor.uberspace.net/projects/tlsd/)
 AM_INIT_AUTOMAKE([-Wall])
 AC_CONFIG_SRCDIR([tlsd.c])
