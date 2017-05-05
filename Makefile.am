@@ -12,7 +12,21 @@ fp2alias_CFLAGS = $(AM_CFLAGS)
 std2fifo_SOURCES = std2fifo.c
 std2fifo_CFLAGS = $(AM_CFLAGS)
 
+# tests
+
+TESTS = tests/authenticate.sh
+
+TESTS_ENVIRONMENT = \
+	builddir="$(builddir)" \
+	certdir="$(top_srcdir)/tests/"
+
+EXTRA_DIST = $(TESTS) \
+	tests/test-key-1.pem \
+	tests/test-cert-1.pem \
+	tests/test-key-2.pem \
+	tests/test-cert-2.pem
+
 # docs
 info_TEXINFOS = tlsd.texi
 dist_man_MANS = tlsd.1 fp2alias.1 std2fifo.1
-EXTRA_DIST = examples
+EXTRA_DIST += examples
