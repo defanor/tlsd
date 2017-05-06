@@ -730,7 +730,8 @@ int serve (options opt)
     if (cc.tcp_socket >= 0)
       conn_terminate(&cc, 1, opt.child_kill_signo);
   }
-  close(listener);
+  if (close(listener))
+    err_msg(LOG_ERR, "Failed to close the listener socket");
   gnutls_certificate_free_credentials(x509_cred);
   gnutls_dh_params_deinit(dh_params);
   gnutls_global_deinit();
